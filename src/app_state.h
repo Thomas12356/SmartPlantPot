@@ -5,7 +5,7 @@
 
 // -------------------- String Reserve Sizes -------------------- //
 
-const size_t HTML_RESERVE_SIZE = 13000;
+const size_t HTML_RESERVE_SIZE = 30000;
 const size_t JSON_RESERVE_SIZE = 25000;
 
 // -------------------- Shared State Struct -------------------- //
