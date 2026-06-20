@@ -1170,7 +1170,7 @@ String BuildRootPageHtml() {
 
       setClass('tempCard', 'metric', data.am2320_ok ? 'ok' : 'warning');
       setClass('humidityCard', 'metric', data.am2320_ok ? 'ok' : 'warning');
-      setText('temperatureValue', data.temperature === null ? 'Sensor warning' : data.temperature + ' C');
+      setText('temperatureValue', data.temperature === null ? 'Sensor warning' : data.temperature + ' \u00b0C');
       setText('humidityValue', data.humidity === null ? 'Sensor warning' : data.humidity + '%');
 
       setClass('pumpCard', 'card hero', data.pump_fault ? 'danger' : (data.pump_running ? 'warning' : 'ok'));
