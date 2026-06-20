@@ -524,10 +524,6 @@ bool GetSensorErrorState() {
     return true;
   }
 
-  if (!latestState.am2320Ok) {
-    return true;
-  }
-
   return false;
 }
 
@@ -536,16 +532,16 @@ String GetSystemStatusText() {
     return "Calibration error";
   }
 
-  if (!latestState.am2320Ok) {
-    return "Temp and Humidity sensor error";
-  }
-
   if (latestState.waterIsLow) {
-    return "Water resouvouir is low";
+    return "Water reservoir is low";
   }
 
   if (latestState.soilIsDry) {
     return "Soil is dry";
+  }
+
+  if (!latestState.am2320Ok) {
+    return "Temperature and humidity sensor warning";
   }
 
   return "Soil moisture is Good";
@@ -569,7 +565,7 @@ void UpdateLED() {
     return;
   }
 
-  if (latestState.waterIsLow || latestState.soilIsDry) {
+  if (!latestState.am2320Ok || latestState.waterIsLow || latestState.soilIsDry) {
     isLedOn = true;
     ledFlashState = false;
     digitalWrite(LED_PIN, HIGH);
@@ -608,6 +604,9 @@ void UpdateSensorReadings() {
 
   Serial.print("Sensor error: ");
   Serial.println(latestState.sensorError ? "YES" : "NO");
+
+  Serial.print("AM2320 warning: ");
+  Serial.println(latestState.am2320Ok ? "NO" : "YES");
 
   Serial.print("Warning LED: ");
   if (latestState.sensorError) {
