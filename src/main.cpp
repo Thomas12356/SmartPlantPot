@@ -86,6 +86,7 @@ int wetCalibration = 1265;
 
 int emptyWaterCalibration = 0;
 int fullWaterCalibration = 1800;
+const int MIN_CALIBRATION_SPAN = 50;
 
 // -------------------- Groove - Mini I2C Motor Driver V1.1 -------------------- //
 
@@ -322,7 +323,7 @@ int AnalogReadAverage(int pin) {
 int GetSoilMoisturePercentage() {
   int averageSoilMoistureRaw = AnalogReadAverage(SOIL_MOISTURE_PIN);
 
-  if (dryCalibration == wetCalibration) {
+  if (dryCalibration - wetCalibration < MIN_CALIBRATION_SPAN) {
     return -1;
   }
 
@@ -359,7 +360,7 @@ bool UpdateSoilDryState(int moisturePercentage) {
 int GetWaterLevelPercentage() {
   int averageWaterLevelRaw = AnalogReadAverage(WATER_LEVEL_PIN);
 
-  if (emptyWaterCalibration == fullWaterCalibration) {
+  if (fullWaterCalibration - emptyWaterCalibration < MIN_CALIBRATION_SPAN) {
     return -1;
   }
 
