@@ -123,7 +123,7 @@ void AppendPageHeader(String& html, const String& title, const String& subtitle)
   html += R"rawliteral(</div>
   <nav class='nav'>
     <a href='/'>Dashboard</a>
-    <a href='/history'>History</a>
+    <a href='/history'>Sensor History</a>
     <a href='/wifi'>WiFi</a>
     <a href='/calibration'>Calibration</a>
   </nav>
