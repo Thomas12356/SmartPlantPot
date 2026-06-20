@@ -2,7 +2,8 @@
 
 An IoT plant pot system that monitors a plant and helps keep it watered.
 
-<img width="134.72" height="240" alt="SmartPlantPot prototype" src="https://github.com/user-attachments/assets/3a9313e8-80b1-45fb-8dbc-7015405a2105" />
+<img width="1013" height="701" alt="image" src="https://github.com/user-attachments/assets/9b67d1c8-c47e-4dd6-ba1a-6bf553e2e07c" />
+
 
 ## About
 
