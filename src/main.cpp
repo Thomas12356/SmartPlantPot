@@ -307,6 +307,50 @@ void HandleWifiConnection() {
 
 // -------------------- General Sensor Functions -------------------- //
 
+String EscapeJsonString(const String& value) {
+  String escaped;
+  escaped.reserve(value.length() + 8);
+
+  for (size_t i = 0; i < value.length(); i++) {
+    char c = value.charAt(i);
+
+    switch (c) {
+      case '"':
+        escaped += "\\\"";
+        break;
+      case '\\':
+        escaped += "\\\\";
+        break;
+      case '\b':
+        escaped += "\\b";
+        break;
+      case '\f':
+        escaped += "\\f";
+        break;
+      case '\n':
+        escaped += "\\n";
+        break;
+      case '\r':
+        escaped += "\\r";
+        break;
+      case '\t':
+        escaped += "\\t";
+        break;
+      default:
+        if ((uint8_t)c < 0x20) {
+          char buffer[7];
+          snprintf(buffer, sizeof(buffer), "\\u%04x", (uint8_t)c);
+          escaped += buffer;
+        } else {
+          escaped += c;
+        }
+        break;
+    }
+  }
+
+  return escaped;
+}
+
 int AnalogReadAverage(int pin) {
   long sum = 0;
 
@@ -743,7 +787,7 @@ String BuildStatusJson() {
 
   json += "\"home_wifi_ssid\":\"";
   if (WiFi.status() == WL_CONNECTED) {
-    json += WiFi.SSID();
+    json += EscapeJsonString(WiFi.SSID());
   }
   json += "\",";
 
@@ -812,7 +856,7 @@ String BuildStatusJson() {
   json += ",";
 
   json += "\"pump_status\":\"";
-  json += pumpStatusString;
+  json += EscapeJsonString(pumpStatusString);
   json += "\",";
 
   json += "\"pump_speed\":";
@@ -828,7 +872,7 @@ String BuildStatusJson() {
   json += ",";
 
   json += "\"status\":\"";
-  json += GetSystemStatusText();
+  json += EscapeJsonString(GetSystemStatusText());
   json += "\",";
 
   json += "\"config\":{";

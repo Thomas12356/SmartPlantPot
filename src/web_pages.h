@@ -5,6 +5,38 @@
 #include <WiFi.h>
 #include "app_state.h"
 
+String EscapeHtml(const String& value) {
+  String escaped;
+  escaped.reserve(value.length() + 8);
+
+  for (size_t i = 0; i < value.length(); i++) {
+    char c = value.charAt(i);
+
+    switch (c) {
+      case '&':
+        escaped += "&amp;";
+        break;
+      case '<':
+        escaped += "&lt;";
+        break;
+      case '>':
+        escaped += "&gt;";
+        break;
+      case '"':
+        escaped += "&quot;";
+        break;
+      case '\'':
+        escaped += "&#39;";
+        break;
+      default:
+        escaped += c;
+        break;
+    }
+  }
+
+  return escaped;
+}
+
 String BuildPageStart(String title) {
   String html;
   html.reserve(HTML_RESERVE_SIZE);
@@ -16,7 +48,7 @@ String BuildPageStart(String title) {
 )rawliteral";
 
   html += "<title>";
-  html += title;
+  html += EscapeHtml(title);
   html += "</title>";
 
   html += R"rawliteral(
@@ -94,7 +126,7 @@ String BuildWifiPageHtml() {
   <h2>Status</h2>
   <p><strong>Setup WiFi:</strong> )rawliteral";
 
-  html += SSID;
+  html += EscapeHtml(String(SSID));
 
   html += R"rawliteral(</p>
   <p><strong>Setup IP:</strong> )rawliteral";
@@ -110,7 +142,7 @@ String BuildWifiPageHtml() {
     html += R"rawliteral(
   <p><strong>Local SSID:</strong> )rawliteral";
 
-    html += WiFi.SSID();
+    html += EscapeHtml(WiFi.SSID());
 
     html += R"rawliteral(</p>
   <p><strong>Local IP:</strong> )rawliteral";
@@ -125,7 +157,7 @@ String BuildWifiPageHtml() {
       html += R"rawliteral(
   <p><strong>Saved SSID:</strong> )rawliteral";
 
-      html += savedSSID;
+      html += EscapeHtml(savedSSID);
       html += "</p>";
     }
   }
@@ -205,7 +237,7 @@ String BuildWifiResultHtml(bool connected) {
   <p><strong>Connected successfully.</strong></p>
   <p><strong>SSID:</strong> )rawliteral";
 
-    html += WiFi.SSID();
+    html += EscapeHtml(WiFi.SSID());
 
     html += R"rawliteral(</p>
   <p><strong>IP:</strong> )rawliteral";
@@ -260,7 +292,7 @@ String BuildCalibrationSavedHtml(String message) {
   <h1>Calibration Saved</h1>
   <p><strong>)rawliteral";
 
-  html += message;
+  html += EscapeHtml(message);
 
   html += R"rawliteral(</strong></p>
   <p><a href='/calibration'>Back to calibration</a></p>
@@ -358,7 +390,7 @@ String BuildPumpResultHtml(String message) {
   <h1>Pump Control</h1>
   <p><strong>)rawliteral";
 
-  html += message;
+  html += EscapeHtml(message);
 
   html += R"rawliteral(</strong></p>
   <p><a href='/'>Back to dashboard</a></p>
@@ -401,7 +433,7 @@ String BuildRootPageHtml() {
     html += R"rawliteral(
   <p><strong>Local SSID:</strong> )rawliteral";
 
-    html += WiFi.SSID();
+    html += EscapeHtml(WiFi.SSID());
 
     html += R"rawliteral(</p>
   <p><strong>Local IP:</strong> )rawliteral";
@@ -463,7 +495,7 @@ String BuildRootPageHtml() {
   <h2>Status</h2>
   <p><strong>)rawliteral";
 
-  html += GetSystemStatusText();
+  html += EscapeHtml(GetSystemStatusText());
 
   html += R"rawliteral(</strong></p>
   <p><strong>LED:</strong> )rawliteral";
@@ -493,7 +525,7 @@ String BuildRootPageHtml() {
   html += R"rawliteral(</p>
   <p><strong>Status:</strong> )rawliteral";
 
-  html += pumpStatusString;
+  html += EscapeHtml(pumpStatusString);
 
   html += R"rawliteral(</p>
   <form method='POST' action='/pump/test'>
