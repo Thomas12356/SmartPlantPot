@@ -520,7 +520,11 @@ String BuildRootPageHtml() {
   <h2>Pump</h2>
   <p><strong>Pump:</strong> )rawliteral";
 
-  html += isPumpOn ? "ON" : "OFF";
+  if (pumpFault) {
+    html += "FAULT";
+  } else {
+    html += isPumpOn ? "ON" : "OFF";
+  }
 
   html += R"rawliteral(</p>
   <p><strong>Status:</strong> )rawliteral";

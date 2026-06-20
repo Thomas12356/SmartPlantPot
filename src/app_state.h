@@ -58,6 +58,7 @@ extern const int WATER_LEVEL_PIN;
 
 // Pump state
 extern bool isPumpOn;
+extern bool pumpFault;
 extern String pumpStatusString;
 
 // -------------------- Shared Functions From main.cpp -------------------- //

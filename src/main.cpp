@@ -143,6 +143,7 @@ bool ledFlashState = false;
 // -------------------- Pump State -------------------- //
 
 bool isPumpOn = false;
+bool pumpFault = false;
 unsigned long pumpStartTime = 0;
 unsigned long lastPumpStopTime = 0;
 String pumpStatusString = "Pump off";
@@ -458,7 +459,7 @@ bool ReadAM2320(float &temperature, float &humidity) {
 
 // -------------------- Pump Functions -------------------- //
 
-void MotorWrite(uint8_t reg, uint8_t value) {
+bool MotorWrite(uint8_t reg, uint8_t value) {
   Wire.beginTransmission(PUMP_MOTOR_ADDRESS);
   Wire.write(reg);
   Wire.write(value);
@@ -468,31 +469,60 @@ void MotorWrite(uint8_t reg, uint8_t value) {
   if (error != 0) {
     Serial.print("Pump write error: ");
     Serial.println(error);
+    return false;
   }
+
+  return true;
 }
 
-void SetPumpMotor(int speed, uint8_t mode) {
+bool SetPumpMotor(int speed, uint8_t mode) {
   speed = constrain(speed, 0, 63);
 
   uint8_t value = speed << 2;
   value |= mode;
 
-  MotorWrite(CONTROL_REGISTER, value);
+  return MotorWrite(CONTROL_REGISTER, value);
 }
 
-void PumpOn() {
-  MotorWrite(FAULT_REGISTER, CLEAR_FAULT);
-  SetPumpMotor(PUMP_SPEED, ON);
+bool PumpOn() {
+  if (isPumpOn) {
+    pumpStatusString = "Pump already running";
+    return true;
+  }
+
+  if (!MotorWrite(FAULT_REGISTER, CLEAR_FAULT)) {
+    isPumpOn = false;
+    pumpFault = true;
+    pumpStatusString = "Pump fault: motor driver write failed";
+    Serial.println("Pump ON failed");
+    return false;
+  }
+
+  if (!SetPumpMotor(PUMP_SPEED, ON)) {
+    isPumpOn = true;
+    pumpFault = true;
+    pumpStartTime = millis();
+    pumpStatusString = "Pump fault: start command uncertain";
+    Serial.println("Pump ON uncertain, attempting to stop");
+    return false;
+  }
 
   isPumpOn = true;
+  pumpFault = false;
   pumpStartTime = millis();
   pumpStatusString = "Pump running";
 
   Serial.println("Pump ON");
+  return true;
 }
 
-void PumpOff() {
-  SetPumpMotor(0, STOP);
+bool PumpOff() {
+  if (!SetPumpMotor(0, STOP)) {
+    pumpFault = true;
+    pumpStatusString = "Pump fault: failed to stop motor";
+    Serial.println("Pump OFF failed");
+    return false;
+  }
 
   if (isPumpOn) {
     lastPumpStopTime = millis();
@@ -501,31 +531,44 @@ void PumpOff() {
   isPumpOn = false;
 
   Serial.println("Pump OFF");
+  return true;
 }
 
 void HandlePumpControl() {
+  if (pumpFault) {
+    if (isPumpOn) {
+      PumpOff();
+    }
+
+    return;
+  }
+
   if (isPumpOn) {
     if (millis() - pumpStartTime >= MAX_PUMP_RUN_TIME) {
-      PumpOff();
-      pumpStatusString = "Pump stopped: max run time";
+      if (PumpOff()) {
+        pumpStatusString = "Pump stopped: max run time";
+      }
       return;
     }
 
     if (latestState.sensorError) {
-      PumpOff();
-      pumpStatusString = "Pump stopped: sensor error";
+      if (PumpOff()) {
+        pumpStatusString = "Pump stopped: soil/water sensor error";
+      }
       return;
     }
 
     if (latestState.waterIsLow) {
-      PumpOff();
-      pumpStatusString = "Pump stopped: water level low";
+      if (PumpOff()) {
+        pumpStatusString = "Pump stopped: water level low";
+      }
       return;
     }
 
     if (!latestState.soilIsDry) {
-      PumpOff();
-      pumpStatusString = "Pump stopped: soil moisture is good";
+      if (PumpOff()) {
+        pumpStatusString = "Pump stopped: soil moisture is good";
+      }
       return;
     }
 
@@ -534,7 +577,7 @@ void HandlePumpControl() {
   }
 
   if (latestState.sensorError) {
-    pumpStatusString = "Error: sensor error";
+    pumpStatusString = "Pump blocked: soil/water sensor error";
     return;
   }
 
@@ -553,8 +596,9 @@ void HandlePumpControl() {
     return;
   }
 
-  PumpOn();
-  pumpStatusString = "Pump running: soil is too dry";
+  if (PumpOn()) {
+    pumpStatusString = "Pump running: soil is too dry";
+  }
 }
 
 // -------------------- Status / Error Functions -------------------- //
@@ -609,7 +653,7 @@ void UpdateLED() {
     return;
   }
 
-  if (!latestState.am2320Ok || latestState.waterIsLow || latestState.soilIsDry) {
+  if (!latestState.am2320Ok || latestState.waterIsLow || latestState.soilIsDry || pumpFault) {
     isLedOn = true;
     ledFlashState = false;
     digitalWrite(LED_PIN, HIGH);
@@ -855,6 +899,10 @@ String BuildStatusJson() {
   json += isPumpOn ? "true" : "false";
   json += ",";
 
+  json += "\"pump_fault\":";
+  json += pumpFault ? "true" : "false";
+  json += ",";
+
   json += "\"pump_status\":\"";
   json += EscapeJsonString(pumpStatusString);
   json += "\",";
@@ -1005,9 +1053,21 @@ void SetupWebServer() {
   });
 
   server.on("/pump/test", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (pumpFault) {
+      pumpStatusString = "Manual test blocked: pump fault";
+      request->send(200, "text/html", BuildPumpResultHtml("Pump test blocked: pump fault"));
+      return;
+    }
+
+    if (isPumpOn) {
+      pumpStatusString = "Manual test ignored: pump already running";
+      request->send(200, "text/html", BuildPumpResultHtml("Pump is already running"));
+      return;
+    }
+
     if (latestState.sensorError) {
-      pumpStatusString = "Manual test blocked: sensor error";
-      request->send(200, "text/html", BuildPumpResultHtml("Pump test blocked: sensor error"));
+      pumpStatusString = "Manual test blocked: soil/water sensor error";
+      request->send(200, "text/html", BuildPumpResultHtml("Pump test blocked: soil/water sensor error"));
       return;
     }
 
@@ -1017,17 +1077,21 @@ void SetupWebServer() {
       return;
     }
 
-    PumpOn();
-    pumpStatusString = "Manual pump test running";
-
-    request->send(200, "text/html", BuildPumpResultHtml("Pump test started"));
+    if (PumpOn()) {
+      pumpStatusString = "Manual pump test running";
+      request->send(200, "text/html", BuildPumpResultHtml("Pump test started"));
+    } else {
+      request->send(500, "text/html", BuildPumpResultHtml("Pump test failed: motor driver write failed"));
+    }
   });
 
   server.on("/pump/off", HTTP_POST, [](AsyncWebServerRequest *request) {
-    PumpOff();
-    pumpStatusString = "Pump manually stopped";
+    if (PumpOff()) {
+      pumpFault = false;
+      pumpStatusString = "Pump manually stopped";
+    }
 
-    request->send(200, "text/html", BuildPumpResultHtml("Pump stopped"));
+    request->send(200, "text/html", BuildPumpResultHtml(pumpStatusString));
   });
 
   server.onNotFound([](AsyncWebServerRequest *request) {
