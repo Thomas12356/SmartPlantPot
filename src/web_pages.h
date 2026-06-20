@@ -1010,7 +1010,7 @@ String BuildRootPageHtml() {
   html += R"rawliteral(</p>
     <div class='actions'>
       <form method='POST' action='/pump/test'>
-        <button type='submit'>Test Pump</button>
+        <button type='submit'>Test Pump Pulse</button>
       </form>
       <form method='POST' action='/pump/off'>
         <button class='danger' type='submit'>Stop / Clear Fault</button>

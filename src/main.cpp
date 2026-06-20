@@ -38,6 +38,7 @@ const uint8_t PUMP_MOTOR_ADDRESS = 0x60;
 const int PUMP_SPEED = 40;  //0-63
 const unsigned long MAX_PUMP_RUN_TIME = 5000;
 const unsigned long PUMP_OFF_TIME = 10000;
+const unsigned long MANUAL_PUMP_TEST_RUN_TIME = 1000;
 
 // -------------------- System Config -------------------- //
 
@@ -144,6 +145,7 @@ bool ledFlashState = false;
 
 bool isPumpOn = false;
 bool pumpFault = false;
+bool manualPumpTestRunning = false;
 unsigned long pumpStartTime = 0;
 unsigned long lastPumpStopTime = 0;
 String pumpStatusString = "Pump off";
@@ -529,6 +531,7 @@ bool PumpOff() {
   }
 
   isPumpOn = false;
+  manualPumpTestRunning = false;
 
   Serial.println("Pump OFF");
   return true;
@@ -544,6 +547,32 @@ void HandlePumpControl() {
   }
 
   if (isPumpOn) {
+    if (manualPumpTestRunning) {
+      if (latestState.waterLevel < 0) {
+        if (PumpOff()) {
+          pumpStatusString = "Manual test stopped: water level sensor error";
+        }
+        return;
+      }
+
+      if (latestState.waterIsLow) {
+        if (PumpOff()) {
+          pumpStatusString = "Manual test stopped: water level low";
+        }
+        return;
+      }
+
+      if (millis() - pumpStartTime >= MANUAL_PUMP_TEST_RUN_TIME) {
+        if (PumpOff()) {
+          pumpStatusString = "Manual pump test complete";
+        }
+        return;
+      }
+
+      pumpStatusString = "Manual pump test running";
+      return;
+    }
+
     if (millis() - pumpStartTime >= MAX_PUMP_RUN_TIME) {
       if (PumpOff()) {
         pumpStatusString = "Pump stopped: max run time";
@@ -1065,9 +1094,9 @@ void SetupWebServer() {
       return;
     }
 
-    if (latestState.sensorError) {
-      pumpStatusString = "Manual test blocked: soil/water sensor error";
-      request->send(200, "text/html", BuildPumpResultHtml("Pump test blocked: soil/water sensor error"));
+    if (latestState.waterLevel < 0) {
+      pumpStatusString = "Manual test blocked: water level sensor error";
+      request->send(200, "text/html", BuildPumpResultHtml("Pump test blocked: water level sensor error"));
       return;
     }
 
@@ -1078,8 +1107,9 @@ void SetupWebServer() {
     }
 
     if (PumpOn()) {
+      manualPumpTestRunning = true;
       pumpStatusString = "Manual pump test running";
-      request->send(200, "text/html", BuildPumpResultHtml("Pump test started"));
+      request->send(200, "text/html", BuildPumpResultHtml("Pump test started: short pulse"));
     } else {
       request->send(500, "text/html", BuildPumpResultHtml("Pump test failed: motor driver write failed"));
     }
