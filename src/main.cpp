@@ -1145,10 +1145,11 @@ void loop() {
 
   HandleWifiConnection();
 
+  HandlePumpControl();
+
   if (millis() - lastSensorUpdateTime >= sensorUpdateInterval) {
     lastSensorUpdateTime = millis();
     UpdateSensorReadings();
-    HandlePumpControl();
 
     if (millis() - lastHistory >= HISTORY_INTERVAL) {
       lastHistory = millis();
