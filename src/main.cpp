@@ -1053,7 +1053,6 @@ void SetupWebServer() {
     }
 
     newSSID.trim();
-    newPassword.trim();
 
     if (newSSID.length() == 0) {
       request->send(400, "text/plain", "SSID cannot be empty");
