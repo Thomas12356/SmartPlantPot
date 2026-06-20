@@ -645,6 +645,10 @@ bool GetSensorErrorState() {
 }
 
 String GetSystemStatusText() {
+  if (pumpFault) {
+    return "Pump fault";
+  }
+
   if (latestState.soilMoisture < 0 || latestState.waterLevel < 0) {
     return "Calibration error";
   }
